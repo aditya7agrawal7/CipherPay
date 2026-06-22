@@ -5,6 +5,7 @@ import Ledger from './components/Ledger';
 import WalletModal from './components/WalletModal';
 import NetworkBadges from './components/NetworkBadges';
 import { useLedger } from './hooks/useLedger';
+import * as StellarSdk from '@stellar/freighter-api';
 import { 
   ArrowRight, 
   QrCode, 
@@ -36,6 +37,8 @@ export default function App() {
   // Wallet state
   const [walletConnected, setWalletConnected] = useState(false);
   const [walletAddress, setWalletAddress] = useState('');
+  const [walletBalance, setWalletBalance] = useState(null);
+  const [balanceLoading, setBalanceLoading] = useState(false);
   const [showWalletDropdown, setShowWalletDropdown] = useState(false);
   const [walletModalOpen, setWalletModalOpen] = useState(false);
   const [selectedWallet, setSelectedWallet] = useState('');
@@ -61,8 +64,18 @@ export default function App() {
   const [exchangeRate, setExchangeRate] = useState(83.94);
   const [copied, setCopied] = useState(false);
   
-  // Payment option: 'QR' | 'MANUAL'
+  // Payment option: 'QR' | 'MANUAL' | 'WALLET'
   const [paymentOption, setPaymentOption] = useState('QR');
+
+  // Wallet Pay state
+  const [walletPayAmount, setWalletPayAmount] = useState('');
+  const [walletPayUpi, setWalletPayUpi] = useState('');
+  const [walletPayLoading, setWalletPayLoading] = useState(false);
+
+  // Add Tokens state
+  const [addTokensOpen, setAddTokensOpen] = useState(false);
+  const [addTokensAmount, setAddTokensAmount] = useState('');
+  const [addTokensLoading, setAddTokensLoading] = useState(false);
 
   // Payout details (Option B)
   const [payoutType, setPayoutType] = useState('UPI');
@@ -85,26 +98,28 @@ export default function App() {
   const [rateHistory, setRateHistory] = useState([]);
   const [rateLoading, setRateLoading] = useState(true);
   const [rateError, setRateError] = useState(null);
+  const [xlmRate, setXlmRate] = useState(0);
 
   const fetchLiveRate = useCallback(async () => {
     try {
       const res = await fetch(
-        'https://api.coingecko.com/api/v3/simple/price?ids=usd-coin&vs_currencies=inr',
+        'https://api.coingecko.com/api/v3/simple/price?ids=usd-coin,stellar&vs_currencies=inr',
         { cache: 'no-store' }
       );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       const newRate = json?.['usd-coin']?.inr;
+      const newXlmRate = json?.['stellar']?.inr;
       if (!newRate) throw new Error('Rate missing');
       const rounded = parseFloat(newRate.toFixed(4));
       setExchangeRate(rounded);
+      if (newXlmRate) setXlmRate(parseFloat(newXlmRate.toFixed(4)));
       const now = new Date();
       const label = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
       setRateHistory(prev => [...prev, { label, value: rounded, time: now.toISOString() }].slice(-60));
       setRateError(null);
     } catch (err) {
       setRateError(err.message);
-      // fallback random-walk so UI stays alive
       setExchangeRate(prev => {
         const delta = (Math.random() - 0.5) * 0.06;
         const next = parseFloat((prev + delta).toFixed(4));
@@ -176,6 +191,20 @@ export default function App() {
       return;
     }
 
+    // Deduct from wallet if Stellar is connected
+    if (selectedWallet === 'stellar' && walletConnected) {
+      const xlmNeeded = xlmRate > 0 ? (usdcVal * exchangeRate) / xlmRate : 0;
+      const currentBalance = parseFloat(walletBalance) || 0;
+
+      if (xlmNeeded > currentBalance) {
+        setErrors({ walletInsufficient: t(language, 'walletInsufficient') });
+        return;
+      }
+
+      setErrors({});
+      setWalletBalance((currentBalance - xlmNeeded).toFixed(4));
+    }
+
     setScreen('SIMULATION');
     setActiveStep(0);
     setStepperProgress(0);
@@ -204,19 +233,21 @@ export default function App() {
           setTimeout(() => {
             // Add completed transaction to the ledger
             const platformFee = parseFloat((usdcVal * 0.005).toFixed(2));
+            const xlmDeducted = xlmRate > 0 ? (usdcVal * exchangeRate) / xlmRate : 0;
             addLedgerTx({
               id: 'tx_' + Math.random().toString(36).substr(2, 7),
               timestamp: new Date().toISOString(),
               usdcAmount: usdcVal,
               inrAmount: estimatedInr,
               rate: exchangeRate,
-              network: 'Polygon',
+              network: selectedWallet === 'stellar' ? 'Stellar' : 'Polygon',
               payoutType: payoutType,
               payoutTarget: payoutType === 'UPI' ? upiId : `${accountName} (${accountNumber.slice(-4)})`,
               status: 'COMPLETED',
               txHash: mockHash,
               utr: mockUtr,
-              fees: { network: 0.15, exchange: platformFee, processing: 0.50 }
+              fees: { network: selectedWallet === 'stellar' ? 0.00001 : 0.15, exchange: platformFee, processing: 0.50 },
+              xlmDeducted: selectedWallet === 'stellar' ? parseFloat(xlmDeducted.toFixed(4)) : null
             });
             setScreen('SUCCESS');
           }, 1000);
@@ -237,20 +268,91 @@ export default function App() {
     setWalletModalOpen(true);
   };
 
-  const handleWalletSelect = (walletId) => {
+  const STELLAR_PUBLIC_KEY = 'GCCEWLQGWN4EQGXKF4QEZFH6J6QEEOYYCVQEYXXK43KCMCUXRWB42DGN';
+
+  const handleWalletSelect = async (walletId) => {
     setSelectedWallet(walletId);
-    const mockAddress = '0x' + Array.from({length: 40}, () => Math.floor(Math.random()*16).toString(16)).join('');
-    setWalletAddress(mockAddress);
+
+    let address = '';
+
+    if (walletId === 'stellar') {
+      try {
+        const connected = await StellarSdk.isConnected();
+        if (connected) {
+          address = await StellarSdk.getPublicKey();
+        } else {
+          address = STELLAR_PUBLIC_KEY;
+        }
+      } catch {
+        address = STELLAR_PUBLIC_KEY;
+      }
+    } else {
+      address = '0x' + Array.from({length: 40}, () => Math.floor(Math.random()*16).toString(16)).join('');
+    }
+
+    setWalletAddress(address);
     setWalletConnected(true);
     setWalletModalOpen(false);
     setShowWalletDropdown(false);
+
+    if (walletId === 'stellar') fetchStellarBalance(address);
+  };
+
+  const fetchStellarBalance = async (publicKey) => {
+    setBalanceLoading(true);
+    try {
+      const res = await fetch(`https://horizon-testnet.stellar.org/accounts/${publicKey}`);
+      const data = await res.json();
+      const native = data?.balances?.find(b => b.asset_type === 'native');
+      setWalletBalance(native ? parseFloat(native.balance).toFixed(4) : '0.0000');
+    } catch {
+      setWalletBalance('0.0000');
+    } finally {
+      setBalanceLoading(false);
+    }
   };
 
   const handleDisconnectWallet = () => {
     setWalletConnected(false);
     setWalletAddress('');
+    setWalletBalance(null);
     setSelectedWallet('');
     setShowWalletDropdown(false);
+    setAddTokensOpen(false);
+    setAddTokensAmount('');
+  };
+
+  const handleAddTokens = async () => {
+    const amount = parseFloat(addTokensAmount);
+    if (!amount || amount <= 0) return;
+
+    setAddTokensLoading(true);
+
+    try {
+      const keypairs = StellarSdk.Keypair.fromPublicKey(walletAddress);
+      const server = new StellarSdk.Horizon.Server('https://horizon-testnet.stellar.org');
+
+      try {
+        await server.loadAccount(walletAddress);
+      } catch {
+        const friendbotUrl = `https://friendbot.stellar.org/?addr=${walletAddress}`;
+        await fetch(friendbotUrl);
+        await new Promise(r => setTimeout(r, 2000));
+      }
+
+      const currentBalance = parseFloat(walletBalance) || 0;
+      setWalletBalance((currentBalance + amount).toFixed(4));
+
+      setAddTokensAmount('');
+      setAddTokensOpen(false);
+    } catch {
+      const currentBalance = parseFloat(walletBalance) || 0;
+      setWalletBalance((currentBalance + amount).toFixed(4));
+      setAddTokensAmount('');
+      setAddTokensOpen(false);
+    } finally {
+      setAddTokensLoading(false);
+    }
   };
 
   const formatAddress = (addr) => {
@@ -261,6 +363,63 @@ export default function App() {
   const getWalletName = (walletId) => {
     const names = { solana: 'Solana', celo: 'Celo', stellar: 'Stellar' };
     return names[walletId] || '';
+  };
+
+  const handleWalletPay = () => {
+    const amount = parseFloat(walletPayAmount) || 0;
+    const balance = parseFloat(walletBalance) || 0;
+
+    if (amount <= 0 || amount > balance) return;
+    if (!walletPayUpi.trim() || !/^[\w.-]+@[\w.-]+$/.test(walletPayUpi)) {
+      setErrors({ walletPayUpi: t(language, 'upiError') });
+      return;
+    }
+
+    setErrors({});
+    setWalletPayLoading(true);
+
+    setTimeout(() => {
+      setWalletPayLoading(false);
+      const mockHash = '0x' + Array.from({length: 64}, () => Math.floor(Math.random()*16).toString(16)).join('');
+      const mockUtr = 'UTR' + Math.floor(100000000000 + Math.random() * 900000000000);
+
+      addLedgerTx({
+        id: 'tx_' + Math.random().toString(36).substr(2, 7),
+        timestamp: new Date().toISOString(),
+        usdcAmount: amount,
+        inrAmount: parseFloat((amount * xlmRate).toFixed(2)),
+        rate: xlmRate,
+        network: 'Stellar',
+        payoutType: 'UPI',
+        payoutTarget: walletPayUpi,
+        status: 'COMPLETED',
+        txHash: mockHash,
+        utr: mockUtr,
+        fees: { network: 0.00001, exchange: 0, processing: 0 }
+      });
+
+      setWalletBalance((balance - amount).toFixed(4));
+      setScreen('SUCCESS');
+      setWalletPayAmount('');
+      setWalletPayUpi('');
+    }, 2500);
+
+    setScreen('SIMULATION');
+    setActiveStep(0);
+    setStepperProgress(0);
+
+    setTimeout(() => {
+      setActiveStep(1);
+      setStepperProgress(33);
+      setTimeout(() => {
+        setActiveStep(2);
+        setStepperProgress(66);
+        setTimeout(() => {
+          setActiveStep(3);
+          setStepperProgress(100);
+        }, 1500);
+      }, 1500);
+    }, 1500);
   };
 
   return (
@@ -363,6 +522,134 @@ export default function App() {
                   {showWalletDropdown && (
                     <div className="glass-card wallet-dropdown">
                       <span className="wallet-dropdown-label">{t(language, 'connected')}</span>
+
+                      {selectedWallet === 'stellar' && (
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '0.5rem 0',
+                          fontSize: '0.8rem'
+                        }}>
+                          <span style={{ color: 'var(--text-secondary)' }}>Balance</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            <span style={{ color: 'var(--text-main)', fontWeight: '600' }}>
+                              {balanceLoading ? '...' : `${walletBalance ?? '—'} XLM`}
+                            </span>
+                            <button
+                              onClick={() => fetchStellarBalance(walletAddress)}
+                              disabled={balanceLoading}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: 'var(--text-secondary)',
+                                cursor: 'pointer',
+                                padding: '2px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                opacity: balanceLoading ? 0.5 : 1
+                              }}
+                              title="Refresh balance"
+                            >
+                              <Loader2 size={12} className={balanceLoading ? 'spin' : ''} />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedWallet === 'stellar' && (
+                        <button
+                          onClick={() => setAddTokensOpen(!addTokensOpen)}
+                          style={{
+                            width: '100%',
+                            padding: '0.45rem 0.75rem',
+                            background: 'rgba(20, 182, 231, 0.08)',
+                            border: '1px solid rgba(20, 182, 231, 0.2)',
+                            borderRadius: '8px',
+                            color: '#14B6E7',
+                            fontSize: '0.78rem',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            fontFamily: 'var(--font-family)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.35rem',
+                            transition: 'all 0.2s ease'
+                          }}
+                        >
+                          <span style={{ fontSize: '1rem', lineHeight: 1 }}>+</span>
+                          {t(language, 'addTokens')}
+                        </button>
+                      )}
+
+                      {addTokensOpen && selectedWallet === 'stellar' && (
+                        <div style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.5rem',
+                          padding: '0.5rem 0',
+                          animation: 'fadeIn 0.2s ease'
+                        }}>
+                          <input
+                            type="number"
+                            placeholder={t(language, 'addTokensAmount')}
+                            value={addTokensAmount}
+                            onChange={e => setAddTokensAmount(e.target.value)}
+                            min="0"
+                            step="0.0001"
+                            style={{
+                              width: '100%',
+                              padding: '0.5rem 0.7rem',
+                              background: 'var(--bg-input)',
+                              border: '1px solid var(--border-glass)',
+                              borderRadius: '8px',
+                              color: 'var(--text-main)',
+                              fontSize: '0.82rem',
+                              fontFamily: 'var(--font-family)',
+                              outline: 'none',
+                              boxSizing: 'border-box'
+                            }}
+                          />
+                          <div style={{ display: 'flex', gap: '0.4rem' }}>
+                            <button
+                              onClick={handleAddTokens}
+                              disabled={addTokensLoading || !addTokensAmount || parseFloat(addTokensAmount) <= 0}
+                              style={{
+                                flex: 1,
+                                padding: '0.4rem',
+                                background: '#14B6E7',
+                                border: 'none',
+                                borderRadius: '6px',
+                                color: '#fff',
+                                fontSize: '0.75rem',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                                fontFamily: 'var(--font-family)',
+                                opacity: addTokensLoading || !addTokensAmount ? 0.6 : 1
+                              }}
+                            >
+                              {addTokensLoading ? '...' : t(language, 'addTokensAdd')}
+                            </button>
+                            <button
+                              onClick={() => { setAddTokensOpen(false); setAddTokensAmount(''); }}
+                              style={{
+                                padding: '0.4rem 0.6rem',
+                                background: 'rgba(255,255,255,0.05)',
+                                border: '1px solid var(--border-glass)',
+                                borderRadius: '6px',
+                                color: 'var(--text-secondary)',
+                                fontSize: '0.75rem',
+                                cursor: 'pointer',
+                                fontFamily: 'var(--font-family)'
+                              }}
+                            >
+                              {t(language, 'addTokensCancel')}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
                       <hr style={{ border: 'none', borderBottom: '1px solid var(--border-glass)', margin: '0.4rem 0' }} />
                       <button onClick={handleDisconnectWallet} className="wallet-disconnect-btn">
                         {t(language, 'disconnect')}
@@ -619,6 +906,33 @@ export default function App() {
                 </div>
               </div>
 
+              {selectedWallet === 'stellar' && walletConnected && (
+                <div
+                  className={`payment-option-card ${paymentOption === 'WALLET' ? 'selected' : ''}`}
+                  onClick={() => setPaymentOption('WALLET')}
+                >
+                  <div style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '14px',
+                    background: paymentOption === 'WALLET' ? 'linear-gradient(135deg, #14B6E7, #04C3F1)' : 'rgba(255,255,255,0.03)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.3s ease',
+                    boxShadow: paymentOption === 'WALLET' ? '0 4px 12px rgba(20, 182, 231, 0.3)' : 'none'
+                  }}>
+                    <Wallet size={24} style={{ color: paymentOption === 'WALLET' ? '#fff' : 'var(--text-muted)' }} />
+                  </div>
+                  <div>
+                    <strong style={{ fontSize: '0.88rem', color: 'var(--text-main)' }}>{t(language, 'payWithWallet')}</strong>
+                    <p style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>
+                      {walletBalance ?? '—'} XLM
+                    </p>
+                  </div>
+                </div>
+              )}
+
             </div>
 
             {/* Render selected option panel */}
@@ -728,6 +1042,9 @@ export default function App() {
                     >
                       {t(language, 'confirmPayout')}
                     </button>
+                    {errors.walletInsufficient && (
+                      <span style={{ color: 'var(--accent-rose)', fontSize: '0.75rem', textAlign: 'center' }}>{errors.walletInsufficient}</span>
+                    )}
                   </div>
 
                 </div>
@@ -866,6 +1183,97 @@ export default function App() {
 
                   <button onClick={handleStartSimulation} className="btn btn-primary" style={{ marginTop: '0.5rem' }}>
                     {t(language, 'verifyOffRamp')}
+                  </button>
+                  {errors.walletInsufficient && (
+                    <span style={{ color: 'var(--accent-rose)', fontSize: '0.75rem', textAlign: 'center' }}>{errors.walletInsufficient}</span>
+                  )}
+
+                </div>
+              )}
+
+              {/* OPTION C: Wallet Pay */}
+              {paymentOption === 'WALLET' && selectedWallet === 'stellar' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '0.75rem 1rem',
+                    background: 'rgba(20, 182, 231, 0.05)',
+                    border: '1px solid rgba(20, 182, 231, 0.15)',
+                    borderRadius: '12px'
+                  }}>
+                    <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{t(language, 'walletBalanceLabel')}</span>
+                    <span style={{ fontSize: '1rem', fontWeight: '700', color: '#14B6E7' }}>
+                      {balanceLoading ? '...' : `${walletBalance ?? '0.0000'} XLM`}
+                    </span>
+                  </div>
+
+                  <div className="input-group" style={{ marginBottom: 0 }}>
+                    <label className="input-label">{t(language, 'payAmount')}</label>
+                    <div className="input-container">
+                      <input
+                        type="number"
+                        placeholder="0.00"
+                        min="0"
+                        step="0.0001"
+                        value={walletPayAmount}
+                        onChange={e => setWalletPayAmount(e.target.value)}
+                        className="input-field"
+                      />
+                    </div>
+                    {walletPayAmount && parseFloat(walletPayAmount) > parseFloat(walletBalance || 0) && (
+                      <span style={{ color: 'var(--accent-rose)', fontSize: '0.75rem' }}>{t(language, 'walletInsufficient')}</span>
+                    )}
+                  </div>
+
+                  {walletPayAmount && parseFloat(walletPayAmount) > 0 && (
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      padding: '0.5rem 0',
+                      fontSize: '0.82rem'
+                    }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>{t(language, 'payInrEquivalent')}</span>
+                      <span style={{ fontWeight: '600', color: 'var(--accent-emerald)' }}>
+                        ₹ {(parseFloat(walletPayAmount) * xlmRate).toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="input-group" style={{ marginBottom: 0 }}>
+                    <label className="input-label">{t(language, 'destinationUPI')}</label>
+                    <div className="input-container">
+                      <input
+                        type="text"
+                        placeholder="e.g. Satoshi@ybl"
+                        value={walletPayUpi}
+                        onChange={e => setWalletPayUpi(e.target.value)}
+                        className="input-field"
+                      />
+                    </div>
+                    {errors.walletPayUpi && <span style={{ color: 'var(--accent-rose)', fontSize: '0.75rem' }}>{errors.walletPayUpi}</span>}
+                  </div>
+
+                  <button
+                    onClick={handleWalletPay}
+                    disabled={
+                      walletPayLoading ||
+                      !walletPayAmount ||
+                      parseFloat(walletPayAmount) <= 0 ||
+                      parseFloat(walletPayAmount) > parseFloat(walletBalance || 0)
+                    }
+                    className="btn btn-primary"
+                    style={{ marginTop: '0.5rem', opacity: walletPayLoading ? 0.7 : 1 }}
+                  >
+                    {walletPayLoading ? (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Loader2 size={16} className="spin" /> Processing...
+                      </span>
+                    ) : (
+                      t(language, 'payNow')
+                    )}
                   </button>
 
                 </div>
@@ -1028,6 +1436,14 @@ export default function App() {
                   {payoutType === 'UPI' ? upiId : `${accountName} (${accountNumber.slice(-4)})`}
                 </span>
               </div>
+              {selectedWallet === 'stellar' && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>Debited from Wallet</span>
+                  <span style={{ color: '#14B6E7', fontWeight: '600', fontSize: '0.85rem' }}>
+                    {(usdcVal * exchangeRate / xlmRate).toFixed(4)} XLM
+                  </span>
+                </div>
+              )}
               {utrNumber && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>{t(language, 'bankUTR')}</span>

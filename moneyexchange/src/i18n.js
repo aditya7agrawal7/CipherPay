@@ -71,6 +71,26 @@ export const translations = {
     txHashLabel: 'Tx Hash:',
     makeAnotherPayment: 'Make Another Payment',
 
+    // Wallet Pay
+    payWithWallet: 'Pay with Wallet',
+    walletBalanceLabel: 'Available Balance',
+    payAmount: 'Amount to Pay (XLM)',
+    payInrEquivalent: 'INR Equivalent',
+    payNow: 'Pay Now',
+    walletInsufficient: 'Insufficient balance',
+    walletPaySuccess: 'Payment sent from wallet successfully!',
+    walletNetworkFee: 'Network Fee',
+
+    // Add Tokens
+    addTokens: 'Add Tokens',
+    addTokensTitle: 'Add XLM to Wallet',
+    addTokensDesc: 'Enter the amount of XLM to add to your wallet.',
+    addTokensAmount: 'Amount (XLM)',
+    addTokensAdd: 'Add Tokens',
+    addTokensCancel: 'Cancel',
+    addTokensAdded: 'Tokens added successfully!',
+    addTokensFailed: 'Failed to add tokens. Please try again.',
+
     // Back / Nav
     back: 'Back',
 
@@ -147,6 +167,26 @@ export const translations = {
     txHashLabel: 'Tx हैश:',
     makeAnotherPayment: 'एक और भुगतान करें',
 
+    // Wallet Pay
+    payWithWallet: 'वॉलेट से भुगतान करें',
+    walletBalanceLabel: 'उपलब्ध शेष',
+    payAmount: 'भुगतान राशि (XLM)',
+    payInrEquivalent: 'INR समकक्ष',
+    payNow: 'अभी भुगतान करें',
+    walletInsufficient: 'अपर्याप्त शेष',
+    walletPaySuccess: 'वॉलेट से भुगतान सफलतापूर्वक भेजा गया!',
+    walletNetworkFee: 'नेटवर्क शुल्क',
+
+    // Add Tokens
+    addTokens: 'टोकन जोड़ें',
+    addTokensTitle: 'वॉलेट में XLM जोड़ें',
+    addTokensDesc: 'अपने वॉलेट में जोड़ने के लिए XLM की राशि दर्ज करें।',
+    addTokensAmount: 'राशि (XLM)',
+    addTokensAdd: 'टोकन जोड़ें',
+    addTokensCancel: 'रद्द करें',
+    addTokensAdded: 'टोकन सफलतापूर्वक जोड़े गए!',
+    addTokensFailed: 'टोकन जोड़ने में विफल। कृपया पुनः प्रयास करें।',
+
     // Back / Nav
     back: 'वापस',
 
@@ -214,6 +254,26 @@ export const translations = {
     txHashLabel: 'Hash Tx:',
     makeAnotherPayment: 'Hacer Otro Pago',
 
+    // Wallet Pay
+    payWithWallet: 'Pagar con Billetera',
+    walletBalanceLabel: 'Saldo Disponible',
+    payAmount: 'Monto a Pagar (XLM)',
+    payInrEquivalent: 'Equivalente INR',
+    payNow: 'Pagar Ahora',
+    walletInsufficient: 'Saldo insuficiente',
+    walletPaySuccess: '¡Pago enviado desde la billetera con éxito!',
+    walletNetworkFee: 'Tarifa de Red',
+
+    // Add Tokens
+    addTokens: 'Agregar Tokens',
+    addTokensTitle: 'Agregar XLM a la Billetera',
+    addTokensDesc: 'Ingrese la cantidad de XLM para agregar a su billetera.',
+    addTokensAmount: 'Cantidad (XLM)',
+    addTokensAdd: 'Agregar Tokens',
+    addTokensCancel: 'Cancelar',
+    addTokensAdded: '¡Tokens agregados con éxito!',
+    addTokensFailed: 'Error al agregar tokens. Inténtelo de nuevo.',
+
     back: 'Atrás',
     footerCompliance: 'Transferencias IMPS simuladas totalmente conformes',
   },
@@ -278,6 +338,26 @@ export const translations = {
     txHashLabel: 'Hash Tx :',
     makeAnotherPayment: 'Effectuer un Autre Paiement',
 
+    // Wallet Pay
+    payWithWallet: 'Payer avec le Portefeuille',
+    walletBalanceLabel: 'Solde Disponible',
+    payAmount: 'Montant à Payer (XLM)',
+    payInrEquivalent: 'Équivalent INR',
+    payNow: 'Payer Maintenant',
+    walletInsufficient: 'Solde insuffisant',
+    walletPaySuccess: 'Paiement envoyé depuis le portefeuille avec succès!',
+    walletNetworkFee: 'Frais Réseau',
+
+    // Add Tokens
+    addTokens: 'Ajouter des Tokens',
+    addTokensTitle: 'Ajouter XLM au Portefeuille',
+    addTokensDesc: 'Entrez le montant de XLM à ajouter à votre portefeuille.',
+    addTokensAmount: 'Montant (XLM)',
+    addTokensAdd: 'Ajouter des Tokens',
+    addTokensCancel: 'Annuler',
+    addTokensAdded: 'Tokens ajoutés avec succès!',
+    addTokensFailed: 'Échec de l\'ajout des tokens. Veuillez réessayer.',
+
     back: 'Retour',
     footerCompliance: 'Transferts IMPS simulés entièrement conformes',
   },
@@ -341,6 +421,26 @@ export const translations = {
     bankUTR: 'Bank-UTR (Ref):',
     txHashLabel: 'Tx-Hash:',
     makeAnotherPayment: 'Weitere Zahlung Durchführen',
+
+    // Wallet Pay
+    payWithWallet: 'Mit Wallet Bezahlen',
+    walletBalanceLabel: 'Verfügbarer Guthaben',
+    payAmount: 'Zahlungsbetrag (XLM)',
+    payInrEquivalent: 'INR-Äquivalent',
+    payNow: 'Jetzt Bezahlen',
+    walletInsufficient: 'Unzureichendes Guthaben',
+    walletPaySuccess: 'Zahlung erfolgreich vom Wallet gesendet!',
+    walletNetworkFee: 'Netzwerkgebühr',
+
+    // Add Tokens
+    addTokens: 'Tokens Hinzufügen',
+    addTokensTitle: 'XLM zum Wallet Hinzufügen',
+    addTokensDesc: 'Geben Sie den Betrag ein, der zum Wallet hinzugefügt werden soll.',
+    addTokensAmount: 'Betrag (XLM)',
+    addTokensAdd: 'Tokens Hinzufügen',
+    addTokensCancel: 'Abbrechen',
+    addTokensAdded: 'Tokens erfolgreich hinzugefügt!',
+    addTokensFailed: 'Token-Hinzufügen fehlgeschlagen. Bitte versuchen Sie es erneut.',
 
     back: 'Zurück',
     footerCompliance: 'Vollständig konforme simulierte IMPS-Transfers',
