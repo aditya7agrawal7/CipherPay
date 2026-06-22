@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="flowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4f46e5" />
+      <stop offset="50%" stop-color="#a855f7" />
+      <stop offset="100%" stop-color="#e11d48" />
+    </linearGradient>
+  </defs>
+  <rect width="100" height="100" rx="24" fill="#09090b" />
+  <rect width="96" height="96" x="2" y="2" rx="22" fill="none" stroke="url(#flowGrad)" stroke-width="2.5" opacity="0.6" />
+  
+  <!-- Swapping arrows circular path -->
+  <path d="M 30,50 A 20,20 0 1,1 70,50 A 20,20 0 1,1 30,50 Z" fill="none" stroke="url(#flowGrad)" stroke-width="6" stroke-linecap="round" stroke-dasharray="80 40" />
+  
+  <!-- USDC Dollar Sign -->
+  <text x="36" y="58" font-family="Outfit, sans-serif" font-size="24" font-weight="700" fill="#ffffff" text-anchor="middle">$</text>
+  <!-- INR Rupee Sign -->
+  <text x="64" y="58" font-family="Outfit, sans-serif" font-size="24" font-weight="700" fill="#ffffff" text-anchor="middle">₹</text>
+</svg>
