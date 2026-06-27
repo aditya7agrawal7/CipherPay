@@ -1,3 +1,13 @@
+<img width="711" height="706" alt="Screenshot 2026-06-27 at 10 33 17 AM" src="https://github.com/user-attachments/assets/e1524319-9c6b-40d6-a417-64714a26aea0" />
+<img width="1470" height="956" alt="Screenshot 2026-06-20 at 4 52 53 PM" src="https://github.com/user-attachments/assets/5d4b8c72-32db-466a-8230-9aa37be76478" />
+<img width="583" height="523" alt="Screenshot 2026-06-27 at 10 34 56 AM" src="https://github.com/user-attachments/assets/a88fb5b6-f1c7-468a-8adc-dcc52e577815" />
+<img width="706" height="716" alt="Screenshot 2026-06-27 at 10 34 27 AM" src="https://github.com/user-attachments/assets/47fc4ced-debc-4c9c-8c85-2cb05938bd93" />
+<img width="585" height="796" alt="Screenshot 2026-06-27 at 10 33 45 AM" src="https://github.com/user-attachments/assets/b79862b5-edb8-4443-9bac-791125db4f8b" />
+<img width="711" height="706" alt="Screenshot 2026-06-27 at 10 33 17 AM" src="https://github.com/user-attachments/assets/b3a20db3-4bf1-4e5f-97d3-d7e050a2d0cd" />
+<img width="583" height="523" alt="Screenshot 2026-06-27 at 10 34 56 AM" src="https://github.com/user-attachments/assets/c41994e9-5432-40fc-94df-1bbeb6853339" />
+<img width="706" height="716" alt="Screenshot 2026-06-27 at 10 34 27 AM" src="https://github.com/user-attachments/assets/90a3bc1e-347b-42c3-a42d-8567e48e3f04" />
+<img width="585" height="796" alt="Screenshot 2026-06-27 at 10 33 45 AM" src="https://github.com/user-attachments/assets/f34d6b1e-f460-4faf-a79b-c43f9f454079" />
+<img width="711" height="706" alt="Screenshot 2026-06-27 at 10 33 17 AM" src="https://github.com/user-attachments/assets/9d9faa96-d6aa-4d08-8bab-e84c55635ca9" />
 # CipherPay (RupeeFlow)
 
 A Web3 off-ramp application that converts cryptocurrency (USDC/XLM) into Indian Rupees (INR) and sends it directly to a UPI ID or bank account via IMPS.
